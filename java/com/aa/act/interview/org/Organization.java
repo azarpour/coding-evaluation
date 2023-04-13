@@ -1,10 +1,12 @@
 package com.aa.act.interview.org;
 
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class Organization {
 
-	private Position root;
+	private final Position root;
+	private final AtomicInteger counter = new AtomicInteger();
 	
 	public Organization() {
 		root = createOrganization();
@@ -19,9 +21,53 @@ public abstract class Organization {
 	 * @param title
 	 * @return the newly filled position or empty if no position has that title
 	 */
-	public Optional<Position> hire(Name person, String title) {
-		//your code here
+	public Result<Position, String> hire(Name person, String title) {
+		Optional<Position> optionalPosition = getPosition(root, title);
+		if (optionalPosition.isPresent()) {
+			Position position = optionalPosition.get();
+			if (!position.isFilled()) {
+				position.setEmployee(Optional.of(new Employee(counter.incrementAndGet(), person)));
+				return new Result<>(position, null);
+			} else {
+				return new Result<>(null, "The position is already filled.");
+			}
+		} else {
+			return new Result<>(null, "The requested position was not found.");
+		}
+	}
+
+	private Optional<Position> getPosition(Position position, String title) {
+		if (position.getTitle().equals(title)) {
+			return Optional.of(position);
+		}
+		for (Position directReport : position.getDirectReports()) {
+			Optional<Position> result = getPosition(directReport, title);
+			if (result.isPresent()) {
+				return result;
+			}
+		}
 		return Optional.empty();
+	}
+	public class Result<T, E> {
+		private final T result;
+		private final E error;
+
+		public Result(T result, E error) {
+			this.result = result;
+			this.error = error;
+		}
+
+		public boolean hasError() {
+			return error != null;
+		}
+
+		public T getResult() {
+			return result;
+		}
+
+		public E getError() {
+			return error;
+		}
 	}
 
 	@Override
